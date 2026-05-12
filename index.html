@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Excel Data Manager</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .upload-area { margin-bottom: 20px; padding: 20px; background: #f0f0f0; }
+        select { width: 100%; padding: 4px; }
+    </style>
+</head>
+<body>
+    <h1>📊 Excel Data Manager</h1>
+    
+    <div class="upload-area">
+        <h3>Upload Excel File</h3>
+        <input type="file" id="excelFile" accept=".xlsx,.xls">
+        <button onclick="uploadFile()">Upload</button>
+        <div id="uploadStatus"></div>
+    </div>
+    
+    <div id="dataContainer"></div>
+
+    <script>
+        loadData();
+        
+        function loadData() {
+            fetch('/get_data')
+                .then(response => response.json())
+                .then(data => {
+                    displayData(data);
+                });
+        }
+        
+        function uploadFile() {
+            const fileInput = document.getElementById('excelFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('uploadStatus').innerHTML = 
+                        '✅ Uploaded ' + result.rows + ' rows, ' + result.columns + ' columns';
+                    loadData();
+                } else {
+                    document.getElementById('uploadStatus').innerHTML = '❌ Error: ' + result.error;
+                }
+            });
+        }
+        
+        function displayData(data) {
+            if (!data || data.length === 0) {
+                document.getElementById('dataContainer').innerHTML = 
+                    '<p>No data. Please upload an Excel file.</p>';
+                return;
+            }
+            
+            const columns = Object.keys(data[0]).filter(key => key !== 'id');
+            
+            let html = '<table><tr><th>#</th>';
+            columns.forEach(col => {
+                html += '<th>' + col + '</th>';
+            });
+            html += '</tr>';
+            
+            data.forEach(row => {
+                html += '<tr>';
+                html += '<td>' + (row.id + 1) + '</td>';
+                columns.forEach(col => {
+                    let value = row[col] || '';
+                    html += '<td contenteditable="true" onblur="updateCell(' + row.id + ', \'' + col + '\', this.innerText)">' + 
+                            escapeHtml(value) + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</table>';
+            
+            document.getElementById('dataContainer').innerHTML = html;
+        }
+        
+        function updateCell(rowId, column, value) {
+            fetch('/update_cell', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ row_id: rowId, column: column, value: value })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (!result.success) {
+                    alert('Error updating cell');
+                }
+            });
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/[&<>]/g, function(c) {
+                if (c === '&') return '&amp;';
+                if (c === '<') return '&lt;';
+                if (c === '>') return '&gt;';
+                return c;
+            });
+        }
+    </script>
+</body>
+</html>
