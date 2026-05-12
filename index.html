@@ -8,7 +8,6 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #4CAF50; color: white; }
         .upload-area { margin-bottom: 20px; padding: 20px; background: #f0f0f0; }
-        select { width: 100%; padding: 4px; }
     </style>
 </head>
 <body>
@@ -24,8 +23,6 @@
     <div id="dataContainer"></div>
 
     <script>
-        loadData();
-        
         function loadData() {
             fetch('/get_data')
                 .then(response => response.json())
@@ -69,7 +66,7 @@
                 return;
             }
             
-            const columns = Object.keys(data[0]).filter(key => key !== 'id');
+            const columns = Object.keys(data[0]);
             
             let html = '<table><tr><th>#</th>';
             columns.forEach(col => {
@@ -77,12 +74,12 @@
             });
             html += '</tr>';
             
-            data.forEach(row => {
+            data.forEach((row, idx) => {
                 html += '<tr>';
-                html += '<td>' + (row.id + 1) + '</td>';
+                html += '<td>' + (idx + 1) + '</td>';
                 columns.forEach(col => {
                     let value = row[col] || '';
-                    html += '<td contenteditable="true" onblur="updateCell(' + row.id + ', \'' + col + '\', this.innerText)">' + 
+                    html += '<td contenteditable="true" onblur="updateCell(' + idx + ', \'' + col + '\', this.innerText)">' + 
                             escapeHtml(value) + '</td>';
                 });
                 html += '</tr>';
@@ -92,17 +89,11 @@
             document.getElementById('dataContainer').innerHTML = html;
         }
         
-        function updateCell(rowId, column, value) {
+        function updateCell(rowIndex, column, value) {
             fetch('/update_cell', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ row_id: rowId, column: column, value: value })
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (!result.success) {
-                    alert('Error updating cell');
-                }
+                body: JSON.stringify({ row_index: rowIndex, column: column, value: value })
             });
         }
         
@@ -115,6 +106,8 @@
                 return c;
             });
         }
+        
+        loadData();
     </script>
 </body>
 </html>
